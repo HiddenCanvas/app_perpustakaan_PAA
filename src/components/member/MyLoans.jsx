@@ -1,38 +1,112 @@
-import React, { useState, useEffect } from 'react';
-import api from 'services/api';
-import { calculateFine } from 'utils/fineCalculator';
+import React, { useEffect, useState } from 'react';
+import api from '../../services/api';
 
 const MyLoans = () => {
+
   const [loans, setLoans] = useState([]);
 
+  const fetchLoans = async () => {
+
+    try {
+
+      const res = await api.get('/loans');
+
+      setLoans(res.data.data.loans || []);
+
+    } catch (err) {
+
+      console.error(err);
+
+    }
+
+  };
+
   useEffect(() => {
-    const fetchMyLoans = async () => {
-      const res = await api.get('/loans?myLoans=true');
-      setLoans(res.data.data.loans);
-    };
-    fetchMyLoans();
+    fetchLoans();
   }, []);
 
+  const handleReturn = async (loanId) => {
+
+    try {
+
+      await api.put(`/loans/${loanId}/return`);
+
+      alert('Buku berhasil dikembalikan');
+
+      fetchLoans();
+
+    } catch (err) {
+
+      console.error(err);
+
+      alert(
+        err.response?.data?.message ||
+        'Gagal mengembalikan buku'
+      );
+
+    }
+
+  };
+
   return (
-    <div className="mt-8">
-      <h2 className="text-2xl font-bold mb-4">Buku yang Saya Pinjam</h2>
-      <div className="grid gap-4">
-        {loans.length === 0 && <p className="text-gray-500 italic">Belum ada buku yang dipinjam.</p>}
-        {loans.map(loan => (
-          <div key={loan._id} className="bg-white p-4 rounded-lg shadow border-l-4 border-orange-500 flex justify-between">
+
+    <div className="bg-white p-6 rounded-xl shadow mt-10">
+
+      <h2 className="text-2xl font-bold mb-6">
+        Buku Yang Dipinjam
+      </h2>
+
+      <div className="space-y-4">
+
+        {loans.map((loan) => (
+
+          <div
+            key={loan._id}
+            className="border rounded-xl p-4 flex justify-between items-center"
+          >
+
             <div>
-              <h4 className="font-bold">{loan.book?.title}</h4>
-              <p className="text-sm">Jatuh Tempo: {new Date(loan.returnDate).toLocaleDateString()}</p>
+
+              <h3 className="font-bold text-lg">
+                {loan.book?.title}
+              </h3>
+
+              <p className="text-gray-500">
+                {loan.book?.author}
+              </p>
+
+              <p className="text-sm mt-2">
+                Status:
+                <span className="font-bold ml-2">
+                  {loan.status}
+                </span>
+              </p>
+
             </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-400">Denda Terakumulasi:</p>
-              <p className="font-bold text-red-500">Rp {calculateFine(loan.returnDate).toLocaleString()}</p>
-            </div>
+
+            {loan.status === 'borrowed' && (
+
+              <button
+                onClick={() =>
+                  handleReturn(loan._id)
+                }
+                className="bg-red-600 text-white px-4 py-2 rounded-lg"
+              >
+                Kembalikan
+              </button>
+
+            )}
+
           </div>
+
         ))}
+
       </div>
+
     </div>
+
   );
+
 };
 
 export default MyLoans;

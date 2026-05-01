@@ -1,43 +1,116 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
-import { calculateFine } from '../../utils/fineCalculator';
 
 const LoanMonitoring = () => {
+
   const [loans, setLoans] = useState([]);
 
   useEffect(() => {
+
     const fetchLoans = async () => {
-      const res = await api.get('/loans');
-      setLoans(res.data.data.loans);
+
+      try {
+
+        const res = await api.get('/loans');
+
+        setLoans(res.data.data.loans || []);
+
+      } catch (err) {
+        console.error(err);
+      }
+
     };
+
     fetchLoans();
+
   }, []);
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-bold mb-4">Monitoring Peminjaman</h2>
-      <table className="w-full text-left">
-        <thead>
-          <tr className="border-b">
-            <th className="py-2">Peminjam</th>
-            <th>Buku</th>
-            <th>Tgl Kembali</th>
-            <th>Denda Est.</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loans.map(loan => (
-            <tr key={loan._id} className="border-b hover:bg-gray-50">
-              <td className="py-3">{loan.user?.name}</td>
-              <td>{loan.book?.title}</td>
-              <td>{new Date(loan.returnDate).toLocaleDateString()}</td>
-              <td className="text-red-600 font-bold">Rp {calculateFine(loan.returnDate).toLocaleString()}</td>
+
+    <div className="bg-white rounded-xl shadow p-6">
+
+      <h2 className="text-2xl font-bold mb-6">
+        Monitoring Peminjaman
+      </h2>
+
+      <div className="overflow-x-auto">
+
+        <table className="w-full">
+
+          <thead>
+
+            <tr className="border-b">
+
+              <th className="text-left py-3">Kode</th>
+              <th className="text-left py-3">Member</th>
+              <th className="text-left py-3">Buku</th>
+              <th className="text-left py-3">Status</th>
+              <th className="text-left py-3">Deadline</th>
+              <th className="text-left py-3">Denda</th>
+
             </tr>
-          ))}
-        </tbody>
-      </table>
+
+          </thead>
+
+          <tbody>
+
+            {loans.map((loan) => (
+
+              <tr
+                key={loan._id}
+                className="border-b hover:bg-gray-50"
+              >
+
+                <td className="py-4">
+                  {loan.loanCode}
+                </td>
+
+                <td>
+                  {loan.member?.name}
+                </td>
+
+                <td>
+                  {loan.book?.title}
+                </td>
+
+                <td>
+
+                  <span className={`px-3 py-1 rounded-full text-sm ${
+                    loan.status === 'returned'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+
+                    {loan.status}
+
+                  </span>
+
+                </td>
+
+                <td>
+                  {new Date(
+                    loan.dueDate
+                  ).toLocaleDateString()}
+                </td>
+
+                <td className="text-red-500 font-bold">
+                  Rp {loan.fineAmount.toLocaleString()}
+                </td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
     </div>
+
   );
+
 };
 
 export default LoanMonitoring;
