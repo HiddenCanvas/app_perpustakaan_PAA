@@ -30,7 +30,7 @@ const MyFines = () => {
     try {
 
       await api.put(`/fines/${fineId}/pay`, {
-        paymentMethod: 'cash',
+        paymentMethod: 'tunai',
       });
 
       alert('Denda berhasil dibayar');

@@ -1,39 +1,54 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
 
-const MyLoans = () => {
+const MyFines = () => {
 
-  const [loans, setLoans] = useState([]);
+  const [fines, setFines] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const fetchLoans = async () => {
+  const fetchFines = async () => {
 
     try {
 
-      const res = await api.get('/loans');
+      const res = await api.get('/fines');
 
-      setLoans(res.data.data.loans || []);
+      setFines(res.data.data.fines || []);
 
     } catch (err) {
 
       console.error(err);
+
+    } finally {
+
+      setLoading(false);
 
     }
 
   };
 
   useEffect(() => {
-    fetchLoans();
+
+    fetchFines();
+
   }, []);
 
-  const handleReturn = async (loanId) => {
+  const handlePay = async (fineId) => {
+
+    const confirmPay = window.confirm(
+      'Bayar denda ini?'
+    );
+
+    if (!confirmPay) return;
 
     try {
 
-      await api.put(`/loans/${loanId}/return`);
+      await api.put(`/fines/${fineId}/pay`, {
+        paymentMethod: 'tunai',
+      });
 
-      alert('Buku berhasil dikembalikan');
+      alert('Denda berhasil dibayar');
 
-      fetchLoans();
+      fetchFines();
 
     } catch (err) {
 
@@ -41,58 +56,91 @@ const MyLoans = () => {
 
       alert(
         err.response?.data?.message ||
-        'Gagal mengembalikan buku'
+        'Gagal membayar denda'
       );
 
     }
 
   };
 
+  if (loading) {
+
+    return (
+      <p className="text-center py-10">
+        Loading denda...
+      </p>
+    );
+
+  }
+
   return (
 
-    <div className="bg-white p-6 rounded-xl shadow mt-10">
+    <div className="bg-white p-6 rounded-xl shadow mt-8">
 
       <h2 className="text-2xl font-bold mb-6">
-        Buku Yang Dipinjam
+        Denda Saya
       </h2>
+
+      {fines.length === 0 && (
+
+        <p className="text-gray-500">
+          Tidak ada denda
+        </p>
+
+      )}
 
       <div className="space-y-4">
 
-        {loans.map((loan) => (
+        {fines.map((fine) => (
 
           <div
-            key={loan._id}
+            key={fine._id}
             className="border rounded-xl p-4 flex justify-between items-center"
           >
 
             <div>
 
               <h3 className="font-bold text-lg">
-                {loan.book?.title}
+                {fine.fineCode}
               </h3>
 
-              <p className="text-gray-500">
-                {loan.book?.author}
+              <p>
+                Jumlah:
+                {' '}
+                Rp {fine.amount.toLocaleString()}
               </p>
 
-              <p className="text-sm mt-2">
-                Status:
-                <span className="font-bold ml-2">
-                  {loan.status}
-                </span>
+              <p>
+                Alasan:
+                {' '}
+                {fine.reason}
+              </p>
+
+              <p
+                className={`font-semibold ${
+                  fine.status === 'paid'
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                }`}
+              >
+
+                {fine.status === 'paid'
+                  ? 'Sudah Dibayar'
+                  : 'Belum Dibayar'}
+
               </p>
 
             </div>
 
-            {loan.status === 'borrowed' && (
+            {fine.status === 'unpaid' && (
 
               <button
                 onClick={() =>
-                  handleReturn(loan._id)
+                  handlePay(fine._id)
                 }
-                className="bg-red-600 text-white px-4 py-2 rounded-lg"
+                className="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700"
               >
-                Kembalikan
+                Bayar
               </button>
 
             )}
@@ -109,4 +157,4 @@ const MyLoans = () => {
 
 };
 
-export default MyLoans;
+export default MyFines;

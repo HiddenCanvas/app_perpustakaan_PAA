@@ -8,6 +8,8 @@ import BookManagement from './BookManagement';
 import LoanMonitoring from './LoanMonitoring';
 import FineManagement from './FineManagement';
 
+import AddFineForm from './AddFineForm';
+
 const DasboardAdmin = () => {
 
   return (
@@ -42,6 +44,9 @@ const DasboardAdmin = () => {
 
         <section className="mb-10">
           <FineManagement />
+        </section>
+        <section>
+          <AddFineForm />
         </section>
 
       </div>

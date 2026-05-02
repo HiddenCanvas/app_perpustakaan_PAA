@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
-
+import React, { useEffect, useMemo, useState } from 'react';
 import api from '../../services/api';
 
 import {
   FaTrash,
   FaEdit,
+  FaSearch,
+  FaBook,
 } from 'react-icons/fa';
 
 const initialForm = {
@@ -22,9 +23,14 @@ const initialForm = {
 };
 
 const BookManagement = () => {
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-    const [books, setBooks] = useState([]);
-    const [categoryFilter, setCategoryFilter] = useState('all');
+
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] =
+    useState('all');
+
   const [form, setForm] =
     useState(initialForm);
 
@@ -32,17 +38,18 @@ const BookManagement = () => {
     useState(null);
 
   const fetchBooks = async () => {
-
     try {
+      setLoading(true);
 
       const res = await api.get('/books');
 
       setBooks(res.data.data.books || []);
-
     } catch (err) {
       console.error(err);
+      alert('Gagal mengambil data buku');
+    } finally {
+      setLoading(false);
     }
-
   };
 
   useEffect(() => {
@@ -50,24 +57,18 @@ const BookManagement = () => {
   }, []);
 
   const handleChange = (e) => {
-
     setForm({
       ...form,
       [e.target.name]: e.target.value,
     });
-
   };
 
   const resetForm = () => {
-
     setForm(initialForm);
-
     setEditingId(null);
-
   };
 
   const handleSubmit = async (e) => {
-
     e.preventDefault();
 
     const payload = {
@@ -78,85 +79,64 @@ const BookManagement = () => {
     };
 
     try {
-
       if (editingId) {
-
         await api.put(
           `/books/${editingId}`,
           payload
         );
 
         alert('Buku berhasil diupdate');
-
       } else {
-
         await api.post(
           '/books',
           payload
         );
 
         alert('Buku berhasil ditambahkan');
-
       }
 
       resetForm();
-
       fetchBooks();
-
     } catch (err) {
-
       console.error(err);
 
       alert(
         err.response?.data?.message ||
-        'Terjadi kesalahan'
+          'Terjadi kesalahan'
       );
-
     }
-
   };
 
   const handleEdit = (book) => {
-
     setEditingId(book._id);
 
     setForm({
-
       title: book.title || '',
       author: book.author || '',
       isbn: book.isbn || '',
       publisher: book.publisher || '',
       publishYear:
         book.publishYear || '',
-
       category:
         book.category || '',
-
       description:
         book.description || '',
-
       pages: book.pages || '',
-
       totalCopies:
         book.totalCopies || 1,
-
       location:
         book.location || '',
-
       coverImage:
         book.coverImage || '',
-
     });
 
     window.scrollTo({
       top: 0,
       behavior: 'smooth',
     });
-
   };
 
   const handleDelete = async (id) => {
-
     const confirmDelete =
       window.confirm(
         'Yakin ingin menghapus buku ini?'
@@ -165,65 +145,92 @@ const BookManagement = () => {
     if (!confirmDelete) return;
 
     try {
-
-      await api.delete(
-        `/books/${id}`
-      );
+      await api.delete(`/books/${id}`);
 
       alert('Buku berhasil dihapus');
 
       fetchBooks();
-
     } catch (err) {
-
       console.error(err);
 
-      alert('Gagal hapus buku');
-
+      alert('Gagal menghapus buku');
     }
-
   };
-const filteredBooks =
-  categoryFilter === 'all'
-    ? books
-    : books.filter(
-        (book) =>
-          book.category === categoryFilter
+
+  const categories = [
+    ...new Set(
+      books.map(
+        (book) => book.category
+      )
+    ),
+  ];
+
+  const filteredBooks = useMemo(() => {
+    return books.filter((book) => {
+      const matchCategory =
+        categoryFilter === 'all'
+          ? true
+          : book.category ===
+            categoryFilter;
+
+      const matchSearch =
+        book.title
+          ?.toLowerCase()
+          .includes(
+            search.toLowerCase()
+          ) ||
+        book.author
+          ?.toLowerCase()
+          .includes(
+            search.toLowerCase()
+          ) ||
+        book.category
+          ?.toLowerCase()
+          .includes(
+            search.toLowerCase()
+          );
+
+      return (
+        matchCategory &&
+        matchSearch
       );
+    });
+  }, [
+    books,
+    categoryFilter,
+    search,
+  ]);
 
-const categories = [
-  ...new Set(
-    books.map(
-      (book) => book.category
-    )
-  ),
-];
   return (
+    <div className="bg-white p-6 rounded-2xl shadow-lg">
 
-    <div className="bg-white p-6 rounded-xl shadow">
+      {/* HEADER */}
 
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
 
-        <h2 className="text-3xl font-bold">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-800">
+            {editingId
+              ? 'Edit Buku'
+              : 'Manajemen Buku'}
+          </h2>
 
-          {editingId
-            ? 'Edit Buku'
-            : 'Tambah Buku'}
-
-        </h2>
+          <p className="text-gray-500 mt-1">
+            Kelola koleksi buku perpustakaan
+          </p>
+        </div>
 
         {editingId && (
-
           <button
             onClick={resetForm}
-            className="bg-gray-500 text-white px-4 py-2 rounded"
+            className="bg-gray-500 hover:bg-gray-600 text-white px-5 py-3 rounded-lg font-semibold"
           >
             Cancel Edit
           </button>
-
         )}
-
       </div>
+
+      {/* FORM */}
 
       <form
         onSubmit={handleSubmit}
@@ -231,67 +238,72 @@ const categories = [
       >
 
         <input
+          type="text"
           name="title"
           placeholder="Judul Buku"
           value={form.title}
           onChange={handleChange}
-          className="border p-3 rounded"
+          className="border p-3 rounded-lg"
           required
         />
 
         <input
+          type="text"
           name="author"
           placeholder="Penulis"
           value={form.author}
           onChange={handleChange}
-          className="border p-3 rounded"
+          className="border p-3 rounded-lg"
           required
         />
 
         <input
+          type="text"
           name="isbn"
           placeholder="ISBN"
           value={form.isbn}
           onChange={handleChange}
-          className="border p-3 rounded"
+          className="border p-3 rounded-lg"
           required
         />
 
         <input
+          type="text"
           name="publisher"
           placeholder="Publisher"
           value={form.publisher}
           onChange={handleChange}
-          className="border p-3 rounded"
+          className="border p-3 rounded-lg"
           required
         />
 
         <input
           type="number"
           name="publishYear"
-          placeholder="Tahun"
+          placeholder="Tahun Terbit"
           value={form.publishYear}
           onChange={handleChange}
-          className="border p-3 rounded"
+          className="border p-3 rounded-lg"
           required
         />
 
         <input
+          type="text"
           name="category"
           placeholder="Kategori"
           value={form.category}
           onChange={handleChange}
-          className="border p-3 rounded"
+          className="border p-3 rounded-lg"
           required
         />
 
         <input
           type="number"
           name="pages"
-          placeholder="Halaman"
+          placeholder="Jumlah Halaman"
           value={form.pages}
           onChange={handleChange}
-          className="border p-3 rounded"
+          className="border p-3 rounded-lg"
           required
         />
 
@@ -301,156 +313,229 @@ const categories = [
           placeholder="Total Buku"
           value={form.totalCopies}
           onChange={handleChange}
-          className="border p-3 rounded"
+          className="border p-3 rounded-lg"
           required
         />
 
         <input
+          type="text"
           name="location"
           placeholder="Lokasi Rak"
           value={form.location}
           onChange={handleChange}
-          className="border p-3 rounded"
+          className="border p-3 rounded-lg"
           required
         />
 
         <input
+          type="text"
           name="coverImage"
-          placeholder="URL Cover"
+          placeholder="URL Cover Buku"
           value={form.coverImage}
           onChange={handleChange}
-          className="border p-3 rounded"
+          className="border p-3 rounded-lg"
         />
 
         <textarea
           name="description"
-          placeholder="Deskripsi"
+          placeholder="Deskripsi Buku"
           value={form.description}
           onChange={handleChange}
-          className="border p-3 rounded md:col-span-2"
+          className="border p-3 rounded-lg md:col-span-2 h-32"
         />
 
         <button
-          className={`text-white py-3 rounded font-bold md:col-span-2 ${
+          type="submit"
+          className={`text-white py-3 rounded-lg font-bold transition md:col-span-2 ${
             editingId
-              ? 'bg-yellow-600'
-              : 'bg-indigo-600'
+              ? 'bg-yellow-600 hover:bg-yellow-700'
+              : 'bg-indigo-600 hover:bg-indigo-700'
           }`}
         >
-
           {editingId
             ? 'Update Buku'
             : 'Tambah Buku'}
-
         </button>
 
       </form>
-<div className="mb-6">
 
-  <select
-    value={categoryFilter}
-    onChange={(e) =>
-      setCategoryFilter(
-        e.target.value
-      )
-    }
-    className="border p-3 rounded"
-  >
+      {/* FILTER */}
 
-    <option value="all">
-      Semua Kategori
-    </option>
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
 
-    {categories.map((cat) => (
+        <div className="flex items-center border rounded-lg px-3 flex-1">
 
-      <option
-        key={cat}
-        value={cat}
-      >
-        {cat}
-      </option>
+          <FaSearch className="text-gray-400" />
 
-    ))}
+          <input
+            type="text"
+            placeholder="Cari judul, penulis, kategori..."
+            value={search}
+            onChange={(e) =>
+              setSearch(
+                e.target.value
+              )
+            }
+            className="w-full p-3 outline-none"
+          />
 
-  </select>
+        </div>
 
-</div>
-      <div className="grid gap-4">
+        <select
+          value={categoryFilter}
+          onChange={(e) =>
+            setCategoryFilter(
+              e.target.value
+            )
+          }
+          className="border p-3 rounded-lg"
+        >
 
-        {filteredBooks.map((book) => (
+          <option value="all">
+            Semua Kategori
+          </option>
 
-          <div
-            key={book._id}
-            className="border rounded-xl p-4 flex justify-between items-center"
-          >
+          {categories.map((cat) => (
+            <option
+              key={cat}
+              value={cat}
+            >
+              {cat}
+            </option>
+          ))}
 
-            <div className="flex gap-4">
+        </select>
 
-              <img
-                src={
-                  book.coverImage &&
-                  book.coverImage !== '-'
-                    ? book.coverImage
-                    : 'https://via.placeholder.com/100x140'
-                }
-                alt={book.title}
-                className="w-20 h-28 object-cover rounded"
-              />
+      </div>
 
-              <div>
+      {/* TOTAL */}
 
-                <h3 className="font-bold text-xl">
-                  {book.title}
-                </h3>
+      <div className="mb-6">
+        <p className="text-gray-600">
+          Total Buku:
+          <span className="font-bold ml-2">
+            {filteredBooks.length}
+          </span>
+        </p>
+      </div>
 
-                <p>
-                  {book.author}
-                </p>
+      {/* LIST */}
 
-                <p className="text-sm text-gray-500">
-                  {book.category}
-                </p>
+      <div className="grid gap-5">
 
-                <p className="text-sm">
-                  Stock:
-                  {' '}
-                  {book.availableCopies}
-                </p>
+        {loading ? (
+          <p>Loading buku...</p>
+        ) : filteredBooks.length ===
+          0 ? (
+          <div className="text-center py-10 border rounded-xl">
+
+            <FaBook className="mx-auto text-5xl text-gray-300 mb-4" />
+
+            <p className="text-gray-500">
+              Buku tidak ditemukan
+            </p>
+
+          </div>
+        ) : (
+          filteredBooks.map((book) => (
+            <div
+              key={book._id}
+              className="border rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-5 hover:shadow-md transition"
+            >
+
+              <div className="flex gap-4">
+
+                <img
+                  src={
+                    book.coverImage &&
+                    book.coverImage !== '-'
+                      ? book.coverImage
+                      : 'https://via.placeholder.com/100x140'
+                  }
+                  alt={book.title}
+                  className="w-24 h-32 object-cover rounded-lg border"
+                />
+
+                <div>
+
+                  <h3 className="text-xl font-bold">
+                    {book.title}
+                  </h3>
+
+                  <p className="text-gray-700">
+                    {book.author}
+                  </p>
+
+                  <p className="text-sm text-indigo-600 font-semibold">
+                    {book.category}
+                  </p>
+
+                  <p className="text-sm mt-2">
+                    ISBN:
+                    {' '}
+                    {book.isbn}
+                  </p>
+
+                  <p className="text-sm">
+                    Tahun:
+                    {' '}
+                    {book.publishYear}
+                  </p>
+
+                  <p className="text-sm">
+                    Stok:
+                    {' '}
+                    <span className="font-bold">
+                      {
+                        book.availableCopies
+                      }
+                    </span>
+                  </p>
+
+                  <p className="text-sm">
+                    Lokasi:
+                    {' '}
+                    {book.location}
+                  </p>
+
+                </div>
+
+              </div>
+
+              <div className="flex gap-3">
+
+                <button
+                  onClick={() =>
+                    handleEdit(book)
+                  }
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-3 rounded-lg flex items-center gap-2"
+                >
+                  <FaEdit />
+                  Edit
+                </button>
+
+                <button
+                  onClick={() =>
+                    handleDelete(
+                      book._id
+                    )
+                  }
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg flex items-center gap-2"
+                >
+                  <FaTrash />
+                  Hapus
+                </button>
 
               </div>
 
             </div>
-
-            <div className="flex gap-4">
-
-              <button
-                onClick={() => handleEdit(book)}
-                className="text-yellow-600 text-xl"
-              >
-                <FaEdit />
-              </button>
-
-              <button
-                onClick={() =>
-                  handleDelete(book._id)
-                }
-                className="text-red-600 text-xl"
-              >
-                <FaTrash />
-              </button>
-
-            </div>
-
-          </div>
-
-        ))}
+          ))
+        )}
 
       </div>
 
     </div>
-
   );
-
 };
 
 export default BookManagement;

@@ -120,7 +120,7 @@ const handleBorrow = async (bookId) => {
       />
     <MyLoans />
 
-<MyFines />
+    <MyFines />
     </div>
   );
 };

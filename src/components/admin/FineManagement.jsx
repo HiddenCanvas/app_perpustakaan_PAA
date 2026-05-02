@@ -37,7 +37,7 @@ const FineManagement = () => {
     try {
 
       await api.put(`/fines/${id}/pay`, {
-        paymentMethod: 'cash',
+        paymentMethod: 'tunai',
       });
 
       alert('Denda berhasil dibayar');
